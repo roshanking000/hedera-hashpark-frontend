@@ -12,6 +12,7 @@ module.exports = {
         'mandatory': '#D43838',
         'normal': '#252C37',
         'hover': '#c0392b',
+        'nft': '#FFCE4A',
       },
       textColor: {
         'primary': 'white',
