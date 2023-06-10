@@ -1,10 +1,21 @@
 import { HashConnect, HashConnectTypes, MessageTypes } from "hashconnect";
 import React, { useMemo } from "react";
 import { useDispatch } from "react-redux";
+
+import {
+  AccountId,
+  TokenId,
+  NftId,
+  TransferTransaction,
+  AccountAllowanceApproveTransaction,
+} from "@hashgraph/sdk";
+
 import {
   setConnectedHederaWalletAddress,
   setHederaWalletStatus,
 } from "../../store/actions/auth.actions";
+
+import * as envfile from "../../env";
 
 const env = "mainnet";
 
@@ -72,3 +83,31 @@ export const HashConnectClient = () => {
   });
   return null;
 };
+
+
+export const allowanceMultipleNft = async (nftList_) => {
+  const _provider = await getProvider();
+  const _accountId = _provider.accountToSign
+  const _signer = hc.getSigner(_provider);
+  const _treasuryId = AccountId.fromString(envfile.TREASURY_ID);
+
+  let allowanceTx = new AccountAllowanceApproveTransaction();
+
+  for (let i = 0; i < nftList_.length; i++) {
+    const _nft = new NftId(TokenId.fromString(nftList_[i].token_id), parseInt(nftList_[i].serial_number));
+    allowanceTx.approveTokenNftAllowance(_nft, _accountId, _treasuryId);
+  }
+  if (!allowanceTx) return false;
+  const allowanceFreeze = await allowanceTx.freezeWithSigner(_signer);
+  if (!allowanceFreeze) return false;
+  const allowanceSign = await allowanceFreeze.signWithSigner(_signer);
+  if (!allowanceSign) return false;
+  const allowanceSubmit = await allowanceSign.executeWithSigner(_signer);
+  if (!allowanceSubmit) return false;
+  const allowanceRx = await _provider.getTransactionReceipt(allowanceSubmit.transactionId);
+
+  if (allowanceRx.status._code === 22)
+    return true;
+
+  return false;
+}

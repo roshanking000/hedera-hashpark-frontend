@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 
-import { hc } from "../../components/common/HashConnectAPIProvider";
+import { hc, allowanceMultipleNft } from "../../components/common/HashConnectAPIProvider";
 import { getRequest, postRequest } from "../../utils/api/apiRequests";
 import LoadingLayout from "../../components/common/LoadingLayout"
 
@@ -15,7 +15,6 @@ import walletIcon from '../../assets/imgs/wallet icon.png'
 const StakingPage = () => {
     const connectedHedera = useSelector((state) => state.auth.hederaWalletStatus);
     const walletId = useSelector((state) => state.auth.hederaWallet);
-    console.log(connectedHedera, walletId)
 
     const [loadingView, setLoadingView] = useState(false)
     const [rewardAmount, setRewardAmount] = useState(0)
@@ -35,17 +34,17 @@ const StakingPage = () => {
         getStakeRatio()
     }, [])
 
-    // useEffect(() => {
-    //     if (walletId != null)
-    //         getTotalInfo();
-    //     else {
-    //         setRewardAmount(0)
-    //         setUnstakedNFTList([])
-    //         setUnstakedNFTCount(0)
-    //         setStakedNFTList([])
-    //         setStakedNFTCount(0)
-    //     }
-    // }, [walletId]);
+    useEffect(() => {
+        if (walletId != '')
+            getTotalInfo();
+        else {
+            setRewardAmount(0)
+            setUnstakedNFTList([])
+            setUnstakedNFTCount(0)
+            setStakedNFTList([])
+            setStakedNFTCount(0)
+        }
+    }, [walletId]);
 
     const handleConnectWallet = async () => {
         if (connectedHedera == false)
@@ -243,12 +242,12 @@ const StakingPage = () => {
         }
         console.log(_stakingList)
 
-        // const _tsxResult = await allowanceMultipleNft(_stakingList);
-        // if (!_tsxResult) {
-        //     toast.error("Error! The transaction was rejected, or failed! Please try again!");
-        //     setLoadingView(false);
-        //     return;
-        // }
+        const _tsxResult = await allowanceMultipleNft(_stakingList);
+        if (!_tsxResult) {
+            toast.error("Error! The transaction was rejected, or failed! Please try again!");
+            setLoadingView(false);
+            return;
+        }
 
         const _postData = {
             accountId: walletId,
