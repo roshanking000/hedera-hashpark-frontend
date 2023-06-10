@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
+import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 
-import { useHashConnect } from "../../components/common/HashConnectAPIProvider";
+import { hc } from "../../components/common/HashConnectAPIProvider";
 import { getRequest, postRequest } from "../../utils/api/apiRequests";
 import LoadingLayout from "../../components/common/LoadingLayout"
 
@@ -12,8 +13,9 @@ import refreshIcon from '../../assets/imgs/refresh.png'
 import walletIcon from '../../assets/imgs/wallet icon.png'
 
 const StakingPage = () => {
-    const { walletData, installedExtensions, connect, disconnect, allowanceNft, allowanceMultipleNft, receiveReward } = useHashConnect();
-    const [walletId, setWalletId] = useState(null)
+    const connectedHedera = useSelector((state) => state.auth.hederaWalletStatus);
+    const walletId = useSelector((state) => state.auth.hederaWallet);
+    console.log(connectedHedera, walletId)
 
     const [loadingView, setLoadingView] = useState(false)
     const [rewardAmount, setRewardAmount] = useState(0)
@@ -33,54 +35,23 @@ const StakingPage = () => {
         getStakeRatio()
     }, [])
 
-    useEffect(() => {
-        if (walletData.pairingData != null) {
-            if (walletData.pairingData.length != 0) {
-                if (walletData.pairingData.length == undefined) {
-                    setWalletId(walletData.pairingData.accountIds[0])
-                }
-                else {
-                    setWalletId(walletData.pairingData[0].accountIds[0])
-                }
-            }
-        }
+    // useEffect(() => {
+    //     if (walletId != null)
+    //         getTotalInfo();
+    //     else {
+    //         setRewardAmount(0)
+    //         setUnstakedNFTList([])
+    //         setUnstakedNFTCount(0)
+    //         setStakedNFTList([])
+    //         setStakedNFTCount(0)
+    //     }
+    // }, [walletId]);
+
+    const handleConnectWallet = async () => {
+        if (connectedHedera == false)
+            hc.connectToLocalWallet()
         else
-            setWalletId(null)
-    }, [walletData]);
-
-    useEffect(() => {
-        if (walletId != null)
-            getTotalInfo();
-        else {
-            setRewardAmount(0)
-            setUnstakedNFTList([])
-            setUnstakedNFTCount(0)
-            setStakedNFTList([])
-            setStakedNFTCount(0)
-        }
-    }, [walletId]);
-
-    const onClickConnectHashPack = () => {
-        if (installedExtensions) {
-            connect();
-        } else {
-            alert(
-                "Please install HashPack wallet extension first. from chrome web store."
-            );
-        }
-    }
-
-    const onClickDisconnectHashPack = () => {
-        disconnect();
-    }
-
-    const handleConnectWallet = () => {
-        if (walletId != null) {
-            setWalletId(null)
-            onClickDisconnectHashPack()
-        }
-        else
-            onClickConnectHashPack()
+            await hc.disconnect(hc.hcData.topic);
     }
 
     const getTotalInfo = async () => {
@@ -272,12 +243,12 @@ const StakingPage = () => {
         }
         console.log(_stakingList)
 
-        const _tsxResult = await allowanceMultipleNft(_stakingList);
-        if (!_tsxResult) {
-            toast.error("Error! The transaction was rejected, or failed! Please try again!");
-            setLoadingView(false);
-            return;
-        }
+        // const _tsxResult = await allowanceMultipleNft(_stakingList);
+        // if (!_tsxResult) {
+        //     toast.error("Error! The transaction was rejected, or failed! Please try again!");
+        //     setLoadingView(false);
+        //     return;
+        // }
 
         const _postData = {
             accountId: walletId,
@@ -338,13 +309,13 @@ const StakingPage = () => {
                             <p className='text-base'>Total Stakers: {totalStakers}</p>
                         </div>
                         <button type="button" className='w-[350px] bg-mandatory hover:bg-hover rounded-xl py-2 text-2xl' onClick={handleConnectWallet}>
-                            {walletId != null ? walletId + " | Disconnect" : "Connect with HashPack"}
+                            {walletId != '' ? walletId + " | Disconnect" : "Connect with HashPack"}
                         </button>
                     </div>
                 </div>
             </div>
             {
-                walletId === null ? (
+                walletId === '' ? (
                     <div className='rounded-xl bg-primary h-60 p-6'>
                         <div className='flex items-center rounded-xl bg-[#323D4D] h-full'>
                             <p className='text-lg text-center w-full'>Please connect wallet to get started.</p>
