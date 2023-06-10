@@ -191,7 +191,7 @@ export default function HashConnectProvider({
     return false;
   }
 
-  const allowanceMultipleNft = async (hbarAmount_, nftList_) => {
+  const allowanceMultipleNft = async (nftList_) => {
     let _accountId
     let _provider
     if (saveData.pairingData.length == undefined) {
@@ -206,9 +206,7 @@ export default function HashConnectProvider({
     const _signer = hashConnect.getSigner(_provider);
     const _treasuryId = AccountId.fromString(env.TREASURY_ID);
 
-    const _hbar = new Hbar(hbarAmount_);
-
-    let allowanceTx = new AccountAllowanceApproveTransaction().approveHbarAllowance(_accountId, _treasuryId, _hbar);
+    let allowanceTx = new AccountAllowanceApproveTransaction();
 
     for (let i = 0; i < nftList_.length; i++) {
       const _nft = new NftId(TokenId.fromString(nftList_[i].token_id), parseInt(nftList_[i].serial_number));

@@ -27,6 +27,8 @@ const StakingPage = () => {
     const [checkedUnstakedNFTCount, setCheckedUnstakedNFTCount] = useState(0)
     const [checkedStakedNFTCount, setCheckedStakedNFTCount] = useState(0)
 
+    const [checkboxValue, setCheckboxValue] = useState("")
+
     useEffect(() => {
         getStakeRatio()
     }, [])
@@ -268,6 +270,7 @@ const StakingPage = () => {
             if (unstakedNFTList[i].selected == true)
                 _stakingList.push(unstakedNFTList[i])
         }
+        console.log(_stakingList)
 
         const _tsxResult = await allowanceMultipleNft(_stakingList);
         if (!_tsxResult) {
@@ -378,9 +381,9 @@ const StakingPage = () => {
                                                     }} />
                                                     {
                                                         item.selected == false ? (
-                                                            <input type="checkbox" className="absolute top-2 left-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
+                                                            <input type="checkbox" value={checkboxValue} className="absolute top-2 left-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
                                                         ) : (
-                                                            <input checked type="checkbox" className="absolute top-2 left-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
+                                                            <input checked type="checkbox" value={checkboxValue} className="absolute top-2 left-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
                                                         )
                                                     }
                                                     <div className='invisible group-hover/nft:visible absolute top-0 right-0 bg-mandatory w-20 py-0.5 rounded-tr-xl rounded-bl-xl'>
@@ -447,9 +450,9 @@ const StakingPage = () => {
                                                     }} />
                                                     {
                                                         item.selected == false ? (
-                                                            <input type="checkbox" className="absolute top-2 left-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
+                                                            <input type="checkbox" value={checkboxValue} className="absolute top-2 left-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
                                                         ) : (
-                                                            <input checked type="checkbox" className="absolute top-2 left-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
+                                                            <input checked type="checkbox" value={checkboxValue} className="absolute top-2 left-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
                                                         )
                                                     }
                                                     <div className='invisible group-hover/nft:visible absolute top-0 right-0 bg-mandatory w-20 py-0.5 rounded-tr-xl rounded-bl-xl'>
