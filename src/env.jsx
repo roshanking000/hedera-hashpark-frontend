@@ -7,9 +7,9 @@ export const IPFS_URL = "https://hashpack.b-cdn.net/ipfs/";
 
 export const COINGECKO_URL = "https://api.coingecko.com";
 
-export const SERVER_URL = "http://localhost:5000";
-// export const SERVER_URL = "http://95.216.18.181:3306";
-// export const SERVER_URL = "https://api.brunoailabs.art";
+// export const SERVER_URL = "http://localhost:5000";
+// export const SERVER_URL = "http://95.216.18.181:5000";
+export const SERVER_URL = "https://api.brunoailabs.art";
 
 export const HASHPARK_NFT_ID = "0.0.2930427";
 

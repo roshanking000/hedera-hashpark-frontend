@@ -11,6 +11,7 @@ import * as env from "../../env";
 import pfpIcon from '../../assets/imgs/pfp.png'
 import refreshIcon from '../../assets/imgs/refresh.png'
 import walletIcon from '../../assets/imgs/wallet icon.png'
+import poofsIcon from '../../assets/imgs/poofs.svg'
 
 const StakingPage = () => {
     const connectedHedera = useSelector((state) => state.auth.hederaWalletStatus);
@@ -18,7 +19,7 @@ const StakingPage = () => {
 
     const [loadingView, setLoadingView] = useState(false)
     const [rewardAmount, setRewardAmount] = useState(0)
-    const [totalStakers, setTotalStakers] = useState(0)
+    const [totalStakerCount, setTotalStakerCount] = useState(0)
     const [totalNFTCount, setTotalNFTCount] = useState(0)
     const [stakedNFTCount, setStakedNFTCount] = useState(0)
     const [stakeRatio, setStakeRatio] = useState('0')
@@ -182,6 +183,7 @@ const StakingPage = () => {
 
     const getStakeRatio = async () => {
         let _stakeRatioResult = await getRequest(env.SERVER_URL + "/api/stake/load_stake_ratio");
+        console.log(_stakeRatioResult)
         if (!_stakeRatioResult) {
             toast.error("Something wrong with server!");
             setLoadingView(false);
@@ -195,6 +197,7 @@ const StakingPage = () => {
         setStakeRatio(_stakeRatioResult.data.stakeRatio.toFixed(1));
         setStakedNFTCount(_stakeRatioResult.data.stakedNFTCount)
         setTotalNFTCount(_stakeRatioResult.data.totalNFTCount)
+        setTotalStakerCount(_stakeRatioResult.data.totalStakerCount)
     }
 
     const getRewardAmount = async () => {
@@ -224,9 +227,26 @@ const StakingPage = () => {
             setLoadingView(false);
             return;
         }
+        let _stakedNFTList = []
+        for (let i = 0; i < _stakedResult.data.length; i++) {
+            _stakedNFTList.push({
+                token_id: _stakedResult.data[i].token_id,
+                serial_number: _stakedResult.data[i].serial_number,
+                imageUrl: _stakedResult.data[i].imageUrl,
+                name: _stakedResult.data[i].name,
+                selected: false,
+            })
+        }
 
-        setStakedNFTList(_stakedResult.data);
-        setStakedNFTCount(_stakedResult.data.length);
+
+        setStakedNFTList(_stakedNFTList);
+        setStakedNFTCount(_stakedNFTList.length);
+    }
+
+    const handleRefresh = async () => {
+        setLoadingView(true)
+        await getStakeRatio()
+        setLoadingView(false)
     }
 
     const handleStake = async () => {
@@ -240,7 +260,6 @@ const StakingPage = () => {
             if (unstakedNFTList[i].selected == true)
                 _stakingList.push(unstakedNFTList[i])
         }
-        console.log(_stakingList)
 
         const _tsxResult = await allowanceMultipleNft(_stakingList);
         if (!_tsxResult) {
@@ -267,12 +286,54 @@ const StakingPage = () => {
         }
 
         // reload nft list
-        await getStakeRatio();
-        await getStakedNFTList();
+        await getStakeRatio()
+        await getStakedNFTList()
         await getNFTList()
-        setUnstakedNFTCount(unstakedNFTCount - _stakingList.length);
-        setStakedNFTCount(stakedNFTCount + _stakingList.length);
+        setCheckedUnstakedNFTCount(0)
+        // setUnstakedNFTCount(unstakedNFTCount - _stakingList.length);
+        // setStakedNFTCount(stakedNFTCount + _stakingList.length);
         toast.success("Staking Success!");
+        setLoadingView(false);
+    }
+
+    const handleUnstake = async () => {
+        if (checkedStakedNFTCount === 0) {
+            toast.error('Please select the nft!')
+            return
+        }
+        setLoadingView(true)
+        let _unstakingList = []
+        for (let i = 0; i < stakedNFTList.length; i++) {
+            if (stakedNFTList[i].selected == true) {
+                stakedNFTList[i].selected = false
+                _unstakingList.push(stakedNFTList[i])
+            }
+        }
+
+        const _postData = {
+            accountId: walletId,
+            nftList: JSON.stringify(_unstakingList)
+        };
+
+        const _res = await postRequest(env.SERVER_URL + "/api/stake/unstake_nftlist", _postData);
+        if (!_res) {
+            toast.error("Something wrong with server!");
+            setLoadingView(false);
+            return;
+        }
+        if (!_res.result) {
+            toast.error(_res.error);
+            setLoadingView(false);
+            return;
+        }
+
+        // reload nft list
+        await getStakeRatio()
+        await getStakedNFTList()
+        setCheckedStakedNFTCount(0)
+        setUnstakedNFTList(unstakedNFTList.concat(_unstakingList))
+        setUnstakedNFTCount(unstakedNFTList.concat(_unstakingList).length)
+        toast.success("Unstaking Success!");
         setLoadingView(false);
     }
 
@@ -288,7 +349,7 @@ const StakingPage = () => {
                     <div className='flex flex-col gap-2 w-full'>
                         <div className='flex flex-row justify-between items-center'>
                             <p className='text-2xl'>HASH PARK & FRIENDS</p>
-                            <button type="button" className='flex flex-row items-center gap-2 bg-mandatory hover:bg-hover rounded-xl px-4 py-0.5 text-xl'>
+                            <button type="button" className='flex flex-row items-center gap-2 bg-mandatory hover:bg-hover rounded-xl px-4 py-0.5 text-xl' onClick={handleRefresh}>
                                 Refresh
                                 <img src={refreshIcon} />
                             </button>
@@ -305,7 +366,7 @@ const StakingPage = () => {
                                     }
                                 </div>
                             </div>
-                            <p className='text-base'>Total Stakers: {totalStakers}</p>
+                            <p className='text-base'>Total Stakers: {totalStakerCount}</p>
                         </div>
                         <button type="button" className='w-[350px] bg-mandatory hover:bg-hover rounded-xl py-2 text-2xl' onClick={handleConnectWallet}>
                             {walletId != '' ? walletId + " | Disconnect" : "Connect with HashPack"}
@@ -332,32 +393,34 @@ const StakingPage = () => {
                             </div>
                             <div className='flex flex-col rounded-2xl bg-secondary p-4 gap-2'>
                                 <p className='text-base'>Total Hash Friends: {unstakedNFTCount}</p>
-                                <div className='grid grid-cols-4 gap-4 w-[80%] mx-auto h-[300px] px-2 overflow-y-auto'>
+                                <div className='grid grid-cols-4 gap-4 w-[80%] mx-auto h-[400px] px-2 overflow-y-auto'>
                                     {
                                         unstakedNFTList?.map((item, index) => {
                                             return (
-                                                <div key={index} className='relative group/nft'>
-                                                    <img className='rounded-xl cursor-pointer' src={item.imageUrl} onClick={() => {
-                                                        if (item.selected == false) {
-                                                            if (checkedUnstakedNFTCount === env.NFT_SELECT_LIMIT) {
-                                                                toast.error(`The maximum number of selectable NFTs is ${env.NFT_SELECT_LIMIT}!`)
-                                                                return
+                                                <div key={index}>
+                                                    <div className='relative group/nft'>
+                                                        <img className='rounded-xl cursor-pointer' src={item.imageUrl} onClick={() => {
+                                                            if (item.selected == false) {
+                                                                if (checkedUnstakedNFTCount === env.NFT_SELECT_LIMIT) {
+                                                                    toast.error(`The maximum number of selectable NFTs is ${env.NFT_SELECT_LIMIT}!`)
+                                                                    return
+                                                                }
+                                                                item.selected = true
+                                                            } else {
+                                                                item.selected = false
                                                             }
-                                                            item.selected = true
-                                                        } else {
-                                                            item.selected = false
+                                                            item.selected == true ? setCheckedUnstakedNFTCount(checkedUnstakedNFTCount + 1) : setCheckedUnstakedNFTCount(checkedUnstakedNFTCount - 1)
+                                                        }} />
+                                                        {
+                                                            item.selected == false ? (
+                                                                <input type="checkbox" value={checkboxValue} className="absolute bottom-2 right-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
+                                                            ) : (
+                                                                <input checked type="checkbox" value={checkboxValue} className="absolute bottom-2 right-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
+                                                            )
                                                         }
-                                                        item.selected == true ? setCheckedUnstakedNFTCount(checkedUnstakedNFTCount + 1) : setCheckedUnstakedNFTCount(checkedUnstakedNFTCount - 1)
-                                                    }} />
-                                                    {
-                                                        item.selected == false ? (
-                                                            <input type="checkbox" value={checkboxValue} className="absolute top-2 left-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
-                                                        ) : (
-                                                            <input checked type="checkbox" value={checkboxValue} className="absolute top-2 left-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
-                                                        )
-                                                    }
-                                                    <div className='invisible group-hover/nft:visible absolute top-0 right-0 bg-mandatory w-20 py-0.5 rounded-tr-xl rounded-bl-xl'>
-                                                        <p className='text-xl text-primary w-full text-center'>{item.serial_number}</p>
+                                                        <div className='invisible group-hover/nft:visible absolute top-0 right-0 bg-mandatory w-20 py-0.5 rounded-tr-xl rounded-bl-xl'>
+                                                            <p className='text-xl text-primary w-full text-center'>{item.serial_number}</p>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             )
@@ -395,38 +458,41 @@ const StakingPage = () => {
                                     </div>
                                 </div>
                                 <div className='flex flex-row gap-8'>
-                                    <button type='button' className='text-xl bg-mandatory hover:bg-hover px-4 py-1 rounded-xl w-full'>Unstake</button>
+                                    <button type='button' className='text-xl bg-mandatory hover:bg-hover px-4 py-1 rounded-xl w-full' onClick={handleUnstake}>Unstake</button>
                                     <button type='button' className='text-xl bg-mandatory hover:bg-hover px-4 py-1 rounded-xl w-full'>
                                         Claim All<br />
                                         <span className='text-secondary text-base'>{rewardAmount} $POOFS</span>
                                     </button>
                                 </div>
-                                <div className='grid grid-cols-4 gap-4 w-[80%] mx-auto h-[300px] px-2 overflow-y-auto'>
+                                <div className='grid grid-cols-4 gap-4 w-[80%] mx-auto h-[400px] px-2 overflow-y-auto'>
                                     {
                                         stakedNFTList?.map((item, index) => {
                                             return (
-                                                <div key={index} className='relative group/nft'>
-                                                    <img className='rounded-xl cursor-pointer' src={item.imageUrl} onClick={() => {
-                                                        if (item.selected == false) {
-                                                            if (checkedStakedNFTCount === env.NFT_SELECT_LIMIT) {
-                                                                toast.error(`The maximum number of selectable NFTs is ${env.NFT_SELECT_LIMIT}!`)
-                                                                return
+                                                <div key={index}>
+                                                    <div className='relative group/nft'>
+                                                        <img className='rounded-xl cursor-pointer' src={item.imageUrl} onClick={() => {
+                                                            if (item.selected == false) {
+                                                                if (checkedStakedNFTCount === env.NFT_SELECT_LIMIT) {
+                                                                    toast.error(`The maximum number of selectable NFTs is ${env.NFT_SELECT_LIMIT}!`)
+                                                                    return
+                                                                }
+                                                                item.selected = true
+                                                            } else {
+                                                                item.selected = false
                                                             }
-                                                            item.selected = true
-                                                        } else {
-                                                            item.selected = false
+                                                            item.selected == true ? setCheckedStakedNFTCount(checkedStakedNFTCount + 1) : setCheckedStakedNFTCount(checkedStakedNFTCount - 1)
+                                                        }} />
+                                                        <img className='absolute left-2 top-4 animate-duration-[3000ms] animate-spin animate-infinite w-8' src={poofsIcon} />
+                                                        {
+                                                            item.selected == false ? (
+                                                                <input type="checkbox" value={checkboxValue} className="absolute bottom-2 right-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
+                                                            ) : (
+                                                                <input checked type="checkbox" value={checkboxValue} className="absolute bottom-2 right-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
+                                                            )
                                                         }
-                                                        item.selected == true ? setCheckedStakedNFTCount(checkedStakedNFTCount + 1) : setCheckedStakedNFTCount(checkedStakedNFTCount - 1)
-                                                    }} />
-                                                    {
-                                                        item.selected == false ? (
-                                                            <input type="checkbox" value={checkboxValue} className="absolute top-2 left-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
-                                                        ) : (
-                                                            <input checked type="checkbox" value={checkboxValue} className="absolute top-2 left-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
-                                                        )
-                                                    }
-                                                    <div className='invisible group-hover/nft:visible absolute top-0 right-0 bg-mandatory w-20 py-0.5 rounded-tr-xl rounded-bl-xl'>
-                                                        <p className='text-xl text-primary w-full text-center'>{item.serial_number}</p>
+                                                        <div className='invisible group-hover/nft:visible absolute top-0 right-0 bg-mandatory w-20 py-0.5 rounded-tr-xl rounded-bl-xl'>
+                                                            <p className='text-xl text-primary w-full text-center'>{item.serial_number}</p>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             )
