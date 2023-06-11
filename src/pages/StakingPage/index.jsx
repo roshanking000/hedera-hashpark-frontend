@@ -21,11 +21,11 @@ const StakingPage = () => {
     const [rewardAmount, setRewardAmount] = useState(0)
     const [totalStakerCount, setTotalStakerCount] = useState(0)
     const [totalNFTCount, setTotalNFTCount] = useState(0)
-    const [stakedNFTCount, setStakedNFTCount] = useState(0)
     const [stakeRatio, setStakeRatio] = useState('0')
     const [unstakedNFTList, setUnstakedNFTList] = useState([]);
     const [unstakedNFTCount, setUnstakedNFTCount] = useState(0);
     const [stakedNFTList, setStakedNFTList] = useState([]);
+    const [stakedNFTCount, setStakedNFTCount] = useState(0)
     const [checkedUnstakedNFTCount, setCheckedUnstakedNFTCount] = useState(0)
     const [checkedStakedNFTCount, setCheckedStakedNFTCount] = useState(0)
 
@@ -217,6 +217,7 @@ const StakingPage = () => {
 
     const getStakedNFTList = async () => {
         let _stakedResult = await getRequest(env.SERVER_URL + "/api/stake/load_staked_nfts?accountId=" + walletId);
+        console.log(_stakedResult)
         if (!_stakedResult) {
             toast.error("Something wrong with server!");
             setLoadingView(false);
@@ -227,20 +228,9 @@ const StakingPage = () => {
             setLoadingView(false);
             return;
         }
-        let _stakedNFTList = []
-        for (let i = 0; i < _stakedResult.data.length; i++) {
-            _stakedNFTList.push({
-                token_id: _stakedResult.data[i].token_id,
-                serial_number: _stakedResult.data[i].serial_number,
-                imageUrl: _stakedResult.data[i].imageUrl,
-                name: _stakedResult.data[i].name,
-                selected: false,
-            })
-        }
 
-
-        setStakedNFTList(_stakedNFTList);
-        setStakedNFTCount(_stakedNFTList.length);
+        setStakedNFTList(_stakedResult.data);
+        setStakedNFTCount(_stakedResult.data.length);
     }
 
     const handleRefresh = async () => {
@@ -335,6 +325,15 @@ const StakingPage = () => {
         setUnstakedNFTCount(unstakedNFTList.concat(_unstakingList).length)
         toast.success("Unstaking Success!");
         setLoadingView(false);
+    }
+    
+    const handleClaimAll = async () => {
+        await getRewardAmount()
+        if (rewardAmount === 0) {
+            toast.warning('No reward!')
+            setLoadingView(false);
+            return
+        }
     }
 
     return (
@@ -459,7 +458,7 @@ const StakingPage = () => {
                                 </div>
                                 <div className='flex flex-row gap-8'>
                                     <button type='button' className='text-xl bg-mandatory hover:bg-hover px-4 py-1 rounded-xl w-full' onClick={handleUnstake}>Unstake</button>
-                                    <button type='button' className='text-xl bg-mandatory hover:bg-hover px-4 py-1 rounded-xl w-full'>
+                                    <button type='button' className='text-xl bg-mandatory hover:bg-hover px-4 py-1 rounded-xl w-full' onClick={handleClaimAll}>
                                         Claim All<br />
                                         <span className='text-secondary text-base'>{rewardAmount} $POOFS</span>
                                     </button>
@@ -471,6 +470,10 @@ const StakingPage = () => {
                                                 <div key={index}>
                                                     <div className='relative group/nft'>
                                                         <img className='rounded-xl cursor-pointer' src={item.imageUrl} onClick={() => {
+                                                            if (item.currentLockoutPeriod !== 0) {
+                                                                toast.error(`You can unstake this nft after ${item.currentLockoutPeriod} days!`)
+                                                                return
+                                                            }
                                                             if (item.selected == false) {
                                                                 if (checkedStakedNFTCount === env.NFT_SELECT_LIMIT) {
                                                                     toast.error(`The maximum number of selectable NFTs is ${env.NFT_SELECT_LIMIT}!`)
@@ -484,11 +487,12 @@ const StakingPage = () => {
                                                         }} />
                                                         <img className='absolute left-2 top-4 animate-duration-[3000ms] animate-spin animate-infinite w-8' src={poofsIcon} />
                                                         {
-                                                            item.selected == false ? (
-                                                                <input type="checkbox" value={checkboxValue} className="absolute bottom-2 right-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
-                                                            ) : (
-                                                                <input checked type="checkbox" value={checkboxValue} className="absolute bottom-2 right-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
-                                                            )
+                                                            item.currentLockoutPeriod === 0 && item.selected == false &&
+                                                            <input type="checkbox" value={checkboxValue} className="absolute bottom-2 right-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
+                                                        }
+                                                        {
+                                                            item.currentLockoutPeriod === 0 && item.selected == true &&
+                                                            <input checked type="checkbox" value={checkboxValue} className="absolute bottom-2 right-4 w-5 h-5 text-red-600 bg-primary border-gray-300 rounded focus:ring-0 focus:ring-offset-0" />
                                                         }
                                                         <div className='invisible group-hover/nft:visible absolute top-0 right-0 bg-mandatory w-20 py-0.5 rounded-tr-xl rounded-bl-xl'>
                                                             <p className='text-xl text-primary w-full text-center'>{item.serial_number}</p>
