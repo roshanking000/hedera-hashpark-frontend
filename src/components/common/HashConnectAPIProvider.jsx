@@ -8,6 +8,7 @@ import {
   NftId,
   TransferTransaction,
   AccountAllowanceApproveTransaction,
+  TokenAssociateTransaction,
 } from "@hashgraph/sdk";
 
 import {
@@ -84,7 +85,6 @@ export const HashConnectClient = () => {
   return null;
 };
 
-
 export const allowanceMultipleNft = async (nftList_) => {
   const _provider = await getProvider();
   const _accountId = _provider.accountToSign
@@ -98,6 +98,57 @@ export const allowanceMultipleNft = async (nftList_) => {
     allowanceTx.approveTokenNftAllowance(_nft, _accountId, _treasuryId);
   }
   if (!allowanceTx) return false;
+  const allowanceFreeze = await allowanceTx.freezeWithSigner(_signer);
+  if (!allowanceFreeze) return false;
+  const allowanceSign = await allowanceFreeze.signWithSigner(_signer);
+  if (!allowanceSign) return false;
+  const allowanceSubmit = await allowanceSign.executeWithSigner(_signer);
+  if (!allowanceSubmit) return false;
+  const allowanceRx = await _provider.getTransactionReceipt(allowanceSubmit.transactionId);
+
+  if (allowanceRx.status._code === 22)
+    return true;
+
+  return false;
+}
+
+export const autoAssociate = async () => {
+  const _provider = await getProvider();
+  const _accountId = _provider.accountToSign
+  const _signer = hc.getSigner(_provider);
+
+  //Associate a token to an account and freeze the unsigned transaction for signing
+  const allowanceTx = await new TokenAssociateTransaction()
+    .setAccountId(_accountId)
+    .setTokenIds([TokenId.fromString(envfile.POOFS_TOKEN_ID)]);
+
+  if (!allowanceTx) return false;
+  const allowanceFreeze = await allowanceTx.freezeWithSigner(_signer);
+  if (!allowanceFreeze) return false;
+  const allowanceSign = await allowanceFreeze.signWithSigner(_signer);
+  if (!allowanceSign) return false;
+  const allowanceSubmit = await allowanceSign.executeWithSigner(_signer);
+  if (!allowanceSubmit) return false;
+  const allowanceRx = await _provider.getTransactionReceipt(allowanceSubmit.transactionId);
+
+  if (allowanceRx.status._code === 22)
+    return true;
+  return false;
+}
+
+
+export const receiveReward = async (rewardAmount) => {
+  const _provider = await getProvider();
+  const _accountId = _provider.accountToSign
+  const _signer = hc.getSigner(_provider);
+  const _treasuryId = AccountId.fromString(envfile.TREASURY_ID);
+
+  const allowanceTx = new TransferTransaction();
+  let sendPoofsBal = parseFloat(rewardAmount) * 10 ** envfile.POOFS_TOKEN_DECIMAL
+
+  allowanceTx.addApprovedTokenTransfer(envfile.POOFS_TOKEN_ID, _treasuryId, -sendPoofsBal);
+  allowanceTx.addTokenTransfer(envfile.POOFS_TOKEN_ID, _accountId, sendPoofsBal);
+
   const allowanceFreeze = await allowanceTx.freezeWithSigner(_signer);
   if (!allowanceFreeze) return false;
   const allowanceSign = await allowanceFreeze.signWithSigner(_signer);

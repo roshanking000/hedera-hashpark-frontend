@@ -12,6 +12,8 @@ export const COINGECKO_URL = "https://api.coingecko.com";
 export const SERVER_URL = "https://api.brunoailabs.art";
 
 export const HASHPARK_NFT_ID = "0.0.2930427";
+export const POOFS_TOKEN_ID = "0.0.2106774"
+export const POOFS_TOKEN_DECIMAL = 4
 
 export const NFT_SELECT_LIMIT = 10;
 export const DEFAULT_HBAR_PRICE = 0.05;

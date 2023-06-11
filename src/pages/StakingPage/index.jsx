@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 
-import { hc, allowanceMultipleNft } from "../../components/common/HashConnectAPIProvider";
+import { hc, allowanceMultipleNft, autoAssociate, receiveReward } from "../../components/common/HashConnectAPIProvider";
 import { getRequest, postRequest } from "../../utils/api/apiRequests";
 import LoadingLayout from "../../components/common/LoadingLayout"
 
@@ -21,6 +21,7 @@ const StakingPage = () => {
     const [rewardAmount, setRewardAmount] = useState(0)
     const [totalStakerCount, setTotalStakerCount] = useState(0)
     const [totalNFTCount, setTotalNFTCount] = useState(0)
+    const [totalStakedNFTCount, setTotalStakedNFTCount] = useState(0)
     const [stakeRatio, setStakeRatio] = useState('0')
     const [unstakedNFTList, setUnstakedNFTList] = useState([]);
     const [unstakedNFTCount, setUnstakedNFTCount] = useState(0);
@@ -183,7 +184,6 @@ const StakingPage = () => {
 
     const getStakeRatio = async () => {
         let _stakeRatioResult = await getRequest(env.SERVER_URL + "/api/stake/load_stake_ratio");
-        console.log(_stakeRatioResult)
         if (!_stakeRatioResult) {
             toast.error("Something wrong with server!");
             setLoadingView(false);
@@ -195,7 +195,7 @@ const StakingPage = () => {
             return;
         }
         setStakeRatio(_stakeRatioResult.data.stakeRatio.toFixed(1));
-        setStakedNFTCount(_stakeRatioResult.data.stakedNFTCount)
+        setTotalStakedNFTCount(_stakeRatioResult.data.stakedNFTCount)
         setTotalNFTCount(_stakeRatioResult.data.totalNFTCount)
         setTotalStakerCount(_stakeRatioResult.data.totalStakerCount)
     }
@@ -217,7 +217,6 @@ const StakingPage = () => {
 
     const getStakedNFTList = async () => {
         let _stakedResult = await getRequest(env.SERVER_URL + "/api/stake/load_staked_nfts?accountId=" + walletId);
-        console.log(_stakedResult)
         if (!_stakedResult) {
             toast.error("Something wrong with server!");
             setLoadingView(false);
@@ -326,35 +325,104 @@ const StakingPage = () => {
         toast.success("Unstaking Success!");
         setLoadingView(false);
     }
-    
+
+    const associateCheck = async (accountId, tokenId) => {
+        try {
+            const associateInfo = await getRequest(`${env.MIRROR_NET_URL}/api/v1/accounts/${accountId}/tokens?token.id=${tokenId}`);
+
+            // already associated
+            if (associateInfo.tokens?.length > 0)
+                return { result: true, associated: true };
+
+            return { result: true, associated: false };
+        } catch (error) {
+            return { result: false, error: error.message };
+        }
+    }
+
     const handleClaimAll = async () => {
         await getRewardAmount()
-        if (rewardAmount === 0) {
+        setLoadingView(true)
+        if (rewardAmount == 0) {
             toast.warning('No reward!')
             setLoadingView(false);
             return
         }
+
+        // associate check
+        const getResult = await associateCheck(walletId, env.POOFS_TOKEN_ID);
+        if (!getResult.result) {
+            toast.error(getResult.error);
+            setLoadingView(false);
+            return;
+        }
+        if (getResult.associated == false) {
+            const _associateResult = await autoAssociate();
+
+            if (!_associateResult) {
+                setLoadingView(false);
+                toast.error("something wrong with associate!");
+                return false;
+            }
+        }
+        
+        // claim reward
+        const _res = await getRequest(env.SERVER_URL + "/api/stake/claim_reward?accountId=" + walletId);
+        if (!_res) {
+            toast.error("Something wrong with server!");
+            setLoadingView(false);
+            return;
+        }
+        if (!_res.result) {
+            toast.error(_res.error);
+            setLoadingView(false);
+            return;
+        }
+
+        const _tsxResult = await receiveReward(_res.data);
+        if (!_tsxResult) {
+            toast.error("Error! The transaction was rejected, or failed! Please try again!");
+            setLoadingView(false);
+            return;
+        }
+
+        //set reward amount 0
+        const _response = await postRequest(env.SERVER_URL + "/api/stake/set_claim_reward", { accountId: walletId });
+        if (!_response) {
+            toast.error("Something wrong with server!");
+            setLoadingView(false);
+            return;
+        }
+        if (!_response.result) {
+            toast.error(_response.error);
+            setLoadingView(false);
+            return;
+        }
+
+        setRewardAmount(0)
+        toast.success(`Claim reward successful!`)
+        setLoadingView(false)
     }
 
     return (
-        <section className="flex flex-col gap-8 py-8 text-primary font-bold w-[90%] 2xl:w-[70%] mx-auto">
+        <section className="flex flex-col gap-4 lg:gap-8 py-4 lg:py-8 text-primary font-bold w-[90%] 2xl:w-[70%] mx-auto">
             <div className="flex flex-col gap-4 py-8">
                 <div className='flex flex-row gap-2 items-center'>
                     <p className='text-2xl'>Staking</p>
                     <span className="bg-mandatory text-xl px-2.5 py rounded-xl">BETA</span>
                 </div>
-                <div className='flex flex-row items-center bg-secondary rounded-xl gap-4 p-4'>
+                <div className='flex flex-col lg:flex-row items-center bg-secondary rounded-xl gap-4 px-2 py-4 lg:p-4'>
                     <img className='rounded-xl' src={pfpIcon} />
                     <div className='flex flex-col gap-2 w-full'>
                         <div className='flex flex-row justify-between items-center'>
-                            <p className='text-2xl'>HASH PARK & FRIENDS</p>
-                            <button type="button" className='flex flex-row items-center gap-2 bg-mandatory hover:bg-hover rounded-xl px-4 py-0.5 text-xl' onClick={handleRefresh}>
+                            <p className='text-base lg:text-2xl'>HASH PARK & FRIENDS</p>
+                            <button type="button" className='flex flex-row items-center gap-2 bg-mandatory hover:bg-hover rounded-xl px-2 lg:px-4 py-0.5 text-base lg:text-xl' onClick={handleRefresh}>
                                 Refresh
                                 <img src={refreshIcon} />
                             </button>
                         </div>
                         <div className='flex flex-col gap-2'>
-                            <p className='text-base'>Total Hash Friends Staked: {stakedNFTCount}/{totalNFTCount}</p>
+                            <p className='text-base'>Total Hash Friends Staked: {totalStakedNFTCount}/{totalNFTCount}</p>
                             <div className='h-7 bg-primary rounded-lg'>
                                 <div className="flex items-center justify-center bg-[#FFDD41] h-7 text-sm text-black text-center leading-none rounded-lg" style={{
                                     width: `${stakeRatio}%`,
@@ -367,7 +435,7 @@ const StakingPage = () => {
                             </div>
                             <p className='text-base'>Total Stakers: {totalStakerCount}</p>
                         </div>
-                        <button type="button" className='w-[350px] bg-mandatory hover:bg-hover rounded-xl py-2 text-2xl' onClick={handleConnectWallet}>
+                        <button type="button" className='w-full lg:w-[350px] bg-mandatory hover:bg-hover rounded-xl py-2 text-2xl' onClick={handleConnectWallet}>
                             {walletId != '' ? walletId + " | Disconnect" : "Connect with HashPack"}
                         </button>
                     </div>
@@ -375,7 +443,7 @@ const StakingPage = () => {
             </div>
             {
                 walletId === '' ? (
-                    <div className='rounded-xl bg-primary h-60 p-6'>
+                    <div className='rounded-xl bg-primary h-60 lg:p-6'>
                         <div className='flex items-center rounded-xl bg-[#323D4D] h-full'>
                             <p className='text-lg text-center w-full'>Please connect wallet to get started.</p>
                         </div>
@@ -392,7 +460,7 @@ const StakingPage = () => {
                             </div>
                             <div className='flex flex-col rounded-2xl bg-secondary p-4 gap-2'>
                                 <p className='text-base'>Total Hash Friends: {unstakedNFTCount}</p>
-                                <div className='grid grid-cols-4 gap-4 w-[80%] mx-auto h-[400px] px-2 overflow-y-auto'>
+                                <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4 w-full lg:w-[80%] mx-auto h-[400px] px-2 overflow-y-auto'>
                                     {
                                         unstakedNFTList?.map((item, index) => {
                                             return (
@@ -436,16 +504,16 @@ const StakingPage = () => {
                                 </div>
                                 <span className="hidden bg-mandatory text-xl px-2.5 py rounded-2xl">Status: Staked</span>
                             </div>
-                            <div className='flex flex-col rounded-2xl bg-secondary p-4 gap-8'>
-                                <div className='hidden flex flex-row justify-between items-center'>
+                            <div className='flex flex-col rounded-2xl bg-secondary p-4 gap-4 lg:gap-8'>
+                                <div className='flex flex-row justify-between items-center'>
                                     <div className='flex flex-col gap-2'>
-                                        <p className='text-base'>Must stake until at least: May 30th, 4:43 pm</p>
-                                        <p className='text-base'>
-                                            Current lock - out period:
-                                            <span className='text-secondary'> 7Days</span>
+                                        <p className='hidden text-base'>Must stake until at least: May 30th, 4:43 pm</p>
+                                        <p className='text-base lg:text-xl'>
+                                            lock - out period:
+                                            <span className='text-secondary'> 14 Days</span>
                                         </p>
                                     </div>
-                                    <div className='flex flex-col gap-2'>
+                                    <div className='hidden flex flex-col gap-2'>
                                         <p className='text-base'>
                                             Lifetime withdrawn earnings:
                                             <span className='text-secondary'> 1500 $POOFS</span>
@@ -456,14 +524,14 @@ const StakingPage = () => {
                                         </p>
                                     </div>
                                 </div>
-                                <div className='flex flex-row gap-8'>
+                                <div className='flex flex-row gap-4 lg:gap-8'>
                                     <button type='button' className='text-xl bg-mandatory hover:bg-hover px-4 py-1 rounded-xl w-full' onClick={handleUnstake}>Unstake</button>
                                     <button type='button' className='text-xl bg-mandatory hover:bg-hover px-4 py-1 rounded-xl w-full' onClick={handleClaimAll}>
                                         Claim All<br />
                                         <span className='text-secondary text-base'>{rewardAmount} $POOFS</span>
                                     </button>
                                 </div>
-                                <div className='grid grid-cols-4 gap-4 w-[80%] mx-auto h-[400px] px-2 overflow-y-auto'>
+                                <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4 w-full lg:w-[80%] mx-auto h-[400px] px-2 overflow-y-auto'>
                                     {
                                         stakedNFTList?.map((item, index) => {
                                             return (

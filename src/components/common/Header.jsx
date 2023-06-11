@@ -7,9 +7,9 @@ import hashparkLogo from '../../assets/imgs/logo.png'
 const Header = () => {
     return (
         <header className="relative w-full flex flex-row justify-start bg-secondary border-b-primary border-b-[0.5px] px-1 lg:px-8 py-4">
-            <Link to='/' className='flex items-center'>
+            <Link to='/' className='flex justify-between items-center w-full px-4'>
                 <img
-                    className='w-[109px]'
+                    className='w-16 lg:w-[109px]'
                     src={hashparkLogo}
                 />
             </Link>
@@ -75,7 +75,7 @@ const Header = () => {
                                 </Menu.Item>
                                 <Menu.Item>
                                     {({ active }) => (
-                                        <a href="https://hash-park-and-friends.gitbook.io/hashparkhub/hash-park-and-friends/overview" target='_blank' rel='noreferrer'>
+                                        <a href="https://hash-park-and-friends.gitbook.io/hashparkhub/hash-park-and-friends/overview" target='_blank' rel='noreferrer' className="text-primary hover:text-hover cursor-pointer hover:text-accent group flex w-full items-center rounded-md px-2 py-2 text-sm">
                                             Roadmap
                                         </a>
                                     )}
