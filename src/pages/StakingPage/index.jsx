@@ -19,6 +19,7 @@ const StakingPage = () => {
 
     const [loadingView, setLoadingView] = useState(false)
     const [rewardAmount, setRewardAmount] = useState(0)
+    const [currentDailyReward, setCurrentDailyReward] = useState(0)
     const [totalStakerCount, setTotalStakerCount] = useState(0)
     const [totalNFTCount, setTotalNFTCount] = useState(0)
     const [totalStakedNFTCount, setTotalStakedNFTCount] = useState(0)
@@ -230,6 +231,7 @@ const StakingPage = () => {
 
         setStakedNFTList(_stakedResult.data);
         setStakedNFTCount(_stakedResult.data.length);
+        setCurrentDailyReward(_stakedResult.dailyReward)
     }
 
     const handleRefresh = async () => {
@@ -509,8 +511,12 @@ const StakingPage = () => {
                                     <div className='flex flex-col gap-2'>
                                         <p className='hidden text-base'>Must stake until at least: May 30th, 4:43 pm</p>
                                         <p className='text-base lg:text-xl'>
-                                            lock - out period:
+                                            Lock - out period:
                                             <span className='text-secondary'> 14 Days</span>
+                                        </p>
+                                        <p className='text-base lg:text-xl'>
+                                            Your current daily reward:
+                                            <span className='text-secondary'> {currentDailyReward} $POOFS</span>
                                         </p>
                                     </div>
                                     <div className='hidden flex flex-col gap-2'>
