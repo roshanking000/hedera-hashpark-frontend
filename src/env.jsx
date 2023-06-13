@@ -1,4 +1,4 @@
-export const TREASURY_ID = "0.0.1975565";
+export const TREASURY_ID = "0.0.2970885";
 
 export const NETWORK_TYPE = "mainnet";
 export const MIRROR_NET_URL = "https://mainnet-public.mirrornode.hedera.com";
